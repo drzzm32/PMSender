@@ -9,7 +9,7 @@ namespace PMSender
 {
     class PMCore
     {
-        const string addr = "http://nya.ac.cn:5000/api/set";
+        const string addr = "http://nyasama.tech:5000/api/set";
         const string name = "rpi";
 
         SerialPort port;
@@ -85,18 +85,6 @@ namespace PMSender
             url = addr +
                   "~id=" + name +
                   "&time=" + DateTime.Now.ToString().Replace(" ", "T").Replace("/", ".") +
-                  "&pm25=" + PM25 +
-                  "&pm10=" + PM10;
-            UploadData(url);
-
-            url = "http://139.199.82.84/messages" +
-                  "?addr=" + "xaut" +
-                  "&pm25=" + PM25 +
-                  "&pm10=" + PM10;
-            UploadData(url);
-
-            url = "http://139.199.82.84/messages" +
-                  "?addr=" + "xautnew" +
                   "&pm25=" + PM25 +
                   "&pm10=" + PM10;
             UploadData(url);
