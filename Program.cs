@@ -9,12 +9,14 @@ namespace PMSender
 {
     class PMCore
     {
-        const string addr = "http://nyasama.tech:5000/api/set";
+        const string addr = "http://nya.ac.cn:5000/api/set";
         const string name = "rpi";
 
         SerialPort port;
         List<byte> buffer;
         Timer timer;
+
+        bool locked;
 
         public int PM25 { get; set; }
         public int PM10 { get; set; }
@@ -44,12 +46,14 @@ namespace PMSender
                 Console.WriteLine(e.Message);
                 return;
             }
+            locked = false;
             timer.Change(0, 1000);
         }
 
         public void DisConnect()
         {
             timer.Change(Timeout.Infinite, 1000);
+            locked = false;
             if (port.IsOpen) port.Close();
         }
 
@@ -68,17 +72,18 @@ namespace PMSender
             {
                 Stream stream = new WebClient().OpenRead(url);
                 string str = new StreamReader(stream).ReadToEnd();
-                Console.WriteLine("Result: " + str);
+                str = str.Replace("{", "").Replace("}", "").Split(',')[0];
+                Console.Write(str);
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error at: \"" + url + "\" ->\n " + e.Message);
+                Console.Write(e.Message);
             }
         }
 
         protected void ShowData()
         {
-            Console.WriteLine("PM2.5: " + PM25 + ",\tPM10: " + PM10);
+            Console.Write("PM2.5: " + PM25 + ", PM10: " + PM10 + ". ");
 
             string url;
 
@@ -87,17 +92,20 @@ namespace PMSender
                   "&time=" + DateTime.Now.ToString().Replace(" ", "T").Replace("/", ".") +
                   "&pm25=" + PM25 +
                   "&pm10=" + PM10;
+
+            Console.Write("Uploading... ");
             UploadData(url);
 
-            Console.WriteLine("\n");
+            Console.Write('\r');
         }
 
         protected void CoreWork(object obj)
         {
             byte tmp;
 
-            if (port.IsOpen)
+            if (port.IsOpen && !locked)
             {
+                locked = true;
                 while (port.BytesToRead > 0)
                 {
                     tmp = (byte)port.ReadByte();
@@ -113,8 +121,8 @@ namespace PMSender
                         }
                         port.ReadExisting();
 
-                        if (buffer.ToArray().Length != buffer.Capacity) return;
-                        if (!CheckPacket(buffer.ToArray())) return;
+                        if (buffer.ToArray().Length != buffer.Capacity) goto END;
+                        if (!CheckPacket(buffer.ToArray())) goto END;
 
                         PM25 = (buffer[3] * 256 + buffer[2]) / 10;
                         PM10 = (buffer[5] * 256 + buffer[4]) / 10;
@@ -122,6 +130,8 @@ namespace PMSender
                         ShowData();
                     }
                 }
+                END:
+                locked = false;
             }
         }
     }
@@ -152,7 +162,9 @@ namespace PMSender
                 Console.WriteLine("No port connected");
             }
 
-            Console.ReadKey(true);
+            Console.WriteLine("\nPress ESC to exit.\n");
+            while (Console.ReadKey(true).Key != ConsoleKey.Escape);
+            core.DisConnect();
         }
     }
 }
